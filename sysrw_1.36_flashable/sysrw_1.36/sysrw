@@ -1,0 +1,23 @@
+#!/system/bin/sh
+
+# Welcome to the one and only original, universal
+# SystemRW/SuperRW feat. MakeRW/ro2rw by lebigmac
+
+# ==========================================================
+
+#                 http://lebigmac.2ix.ch
+
+# ==========================================================
+
+# https://forum.xda-developers.com/t/universal-systemrw-superrw-feat-makerw-ro2rw-read-only-2-read-write-super-partition-converter-resizer-by-lebigmac.4247311/
+
+# https://forum.xda-developers.com/t/the-real-makerw-ro2rw-v1-0-by-lebigmac-read-only-2-read-write-partition-converter-erofs-rw-ext4-rw-f2fs-rw.4536821/
+
+app="sysrw"; author="lebigmac"; version="1.36"; title=$app"_"$version; appDir=`dirname $0`; binDir="$appDir/bin"; p="$binDir/superw"
+[ ! -e $p ] && echo "Fatal error! Please reinstall program!" && exit -1
+if [ `id -u` -eq 0 ]; then
+  chmod +x $p; $p "$@";
+else
+  if ( which su &> /dev/null ); then su -c 'chmod +x $p; $p "$@";'; else echo "Error! Device is not rooted!"; exit -1; fi
+fi
+

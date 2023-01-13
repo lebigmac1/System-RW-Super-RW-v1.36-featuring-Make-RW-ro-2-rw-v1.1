@@ -1,0 +1,483 @@
+#!/system/bin/sh
+
+# Welcome to the one and only original, universal
+# SystemRW/SuperRW feat. MakeRW/ro2rw by lebigmac
+
+# ==========================================================
+
+#                 http://lebigmac.2ix.ch
+
+# ==========================================================
+
+# https://forum.xda-developers.com/t/universal-systemrw-superrw-feat-makerw-ro2rw-read-only-2-read-write-super-partition-converter-resizer-by-lebigmac.4247311/
+
+# https://forum.xda-developers.com/t/the-real-makerw-ro2rw-v1-0-by-lebigmac-read-only-2-read-write-partition-converter-erofs-rw-ext4-rw-f2fs-rw.4536821/
+
+app="sysrw"; author="lebigmac"; version="1.36"; ro2rw="1.1"; title=$app"_"$version
+binDir=`dirname $0`; appDir="$binDir/.."; logDir="$appDir/log"; imgDir="$appDir/img"; tmpDir="$imgDir/tmp"; optDir="$appDir/options"
+
+welcome(){
+  printf "\n ---------------------------------------------------\n\
+|  Welcome to the one and only original, universal  |\n\
+|===================================================|\n\
+|        SystemRW / SuperRW v%s featuring         |\n\
+|         MakeRW / ro2rw v%s by %s           |\n\
+|===================================================|\n\
+|(read-only-2-read/write SUPER partition converter) |\n\
+|---------------------------------------------------|\n\
+|Also known as System-RW/Vendor-RW/Product-RW/Odm-RW|\n\
+|   FORCE-RW, TRUE-RW, EROFS-RW, F2FS-RW, EXT4-RW,  |\n\
+| THE REAL RW, FULL-RW, ERWFS, F2FS-2-RW-CONVERTER, |\n\
+|EROFS-2-RW-CONVERTER, Super Flasher/Resizer/Patcher|\n\
+| Root enhancer, Full Root, Real Root & more aliases|\n\
+|---------------------------------------------------|\n\
+|Inspiring a whole generation of talented developers|\n\
+|     and empowering the open source community.     |\n\
+|     The prophecy has finally been fullfilled!     |\n\
+|The Pandora's Box has been fully unlocked at last! |\n\
+|Let the Olympic System Modding Games (OASMG) begin!|\n\
+| The power is now in YOUR hands! And do not forget:|\n\
+|    With great power comes great responsibility!   |\n\
+|---------------------------------------------------|\n\
+|  CREDITS: @%s @Brepro1 @Kolibass @Yuki1001  |\n\
+| Shoutouts: harpreet.s, frxhb, HemanthJabalpuri    |\n\
+|===================================================|\n\
+|    OFFICIAL HOMEPAGE @ http://%s.2ix.ch     |\n\
+|===================================================|\n\
+|You can use this software for free for educational,|\n\
+| personal, non-commercial, legal purposes. To use  |\n\
+|  this app for commercial purposes, please rent a  |\n\
+| commercial usage license @ the official link above|\n\
+|---------------------------------------------------|\n\
+|   WARNING! NEVER TRUST THE SOFTWARE OF THIEVES!   |\n\
+|This project (or parts thereof) was stolen, hacked |\n\
+|    and/or abused by brigudav, leegarchat & co!    |\n\
+|         [ insert random thief name here ]         |\n\
+|---------------------------------------------------|\n\
+|Always download original System-RW from link above!|\n\
+|---------------------------------------------------|\n\
+|You can learn from my code but please do not steal,|\n\
+| hack, crack or abuse it in any way! Thank you! <3 |\n\
+ ---------------------------------------------------\n" $version $ro2rw $author $author $author
+}
+
+echoUsage(){
+    printf "\nUsage examples:\n---------------\n* Run this program with default settings [RECOMMENDED]\n./%s\n\n* Specify existing super image as input [OPTIONAL]\nOmitting this parameter is equivalent to using in=@auto which is equivalent to using in=\`realpath /dev/block/by-name/super\`\n./%s in=./img/super.img\n\n* Specify patched super image output file path [OPTIONAL]\nOmitting this parameter is equivalent to using out=@auto which is equivalent to using out=./img/super_patched.bin\n./%s out=./img/super_patched_new.bin\n\n* Specify extra size (in MB) to be added to each sub-partition of the new patched super image or use size=@auto for auto-resizing all sub-partitions inside the new super image [OPTIONAL]\nOmitting this parameter is equivalent to using size=@auto which will initiate the auto-resize feature\n./%s size=15\n\n* Specify whether or not the patched super image should be in raw file format [OPTIONAL]\nOmitting this parameter will create a sparse patched super image by default\nWARNING! This expert example will create the raw super_patched.bin file directly in your super block device! Only do this in recovery or you might corrupt your system!\n./%s out=\`realpath /dev/block/by-name/super\` -r in=../super.img\n\n" $app $app $app $app $app
+    exit 1
+}
+
+dump(){
+    if [ ! -z "$3" ]; then dcmd="dd if=$1 of=$2"; else dcmd="$binDir/img2simg $1 $2"; fi;
+    printf "\n%s: Dumping %s to %s please wait...\n" $app $1 $2
+    if ( ! $dcmd ); then
+        dr=$?
+        printf "%s: There was a problem dumping %s to %s\n\n" $app $1 $2
+        return 1
+    else
+        printf "%s: Successfully dumped %s to %s\n" $app $1 $2
+        return 0
+    fi
+}
+
+isSparse(){
+  file $1 2>&1 | grep -q sparse; ret=$?
+  [ "$ret" -eq 0 ] && printf '%s: Sparse file detected! Unsparsing...\n' $app
+  return $ret
+}
+
+sparse2Raw(){
+  filePth=$1
+  filePathRaw="${filePth%.*}_raw.img"
+  $binDir/simg2img $filePth $filePathRaw
+  if ( mv -f $filePathRaw $filePth ); then printf "%s: Unsparse process complete!\n\n" $app; else mr=$?; printf "%s: Fatal unsparse error!\n\n" $app; return $mr; fi;
+}
+
+parseArgs(){
+    if [ $# -gt 0 ]; then
+        for arg in "$@"; do
+            case "$arg" in
+                "in="*)
+                    inputValue="${arg#*=}"
+                    if [ ! -z "$inputValue" ]; then
+                        printf "%s: Custom input detected: %s\n" $app "$inputValue"
+                        if [ "$inputValue" != "@auto" ]; then
+                          isSparse $inputValue && sparse2Raw $inputValue
+                          [[ ! -e "$inputValue" || ! -f "$inputValue" ]] && printf "%s: Fatal error! Input file does not exist or is invalid\n\n" $app && exit 1
+                        fi
+                    else
+                        echoUsage
+                    fi
+                    ;;
+                "out="*)
+                    outputValue="${arg#*=}"
+                    if [ ! -z "$outputValue" ]; then
+                        printf "%s: Custom output detected: %s\n" $app "$outputValue"
+                    else
+                        echoUsage
+                    fi
+                    ;;
+                "size="*)
+                    sizeValue="${arg#*=}"
+                    if [ ! -z "$sizeValue" ]; then
+                        printf "%s: Custom size detected: %s\n" $app "$sizeValue"
+                    else
+                        echoUsage
+                    fi
+                    ;;
+                "-r"*)
+                    printf "%s: Raw mode detected\n" $app
+                    raw=1
+                    ;;
+                *)
+                    echoUsage
+                    ;;
+            esac
+        done
+    fi
+}
+
+parseConfig(){
+  configPath="$optDir/config.ini"
+  if [ -e $configPath ]; then
+    while IFS= read -r line; do
+      case "$line" in
+        "backup="*)
+          if [ ! -z "${line#*=}" ]; then
+            bakValue="${line#*=}"
+          else bakValue=1; fi
+          [ "$bakValue" -eq 1 ] && printf "%s: Backups enabled\n" $app || printf "%s: Backups disabled\n" $app
+        ;;
+        "threshold="*)
+          if [ ! -z "${line#*=}" ]; then
+            thresValue="${line#*=}"
+            printf "%s: Custom threshold detected: %s\n" $app "$thresValue"
+          fi
+          [ -z "$thresValue" ] && thresValue=8388608
+        ;;
+        "exclude="*)
+          if [ ! -z "${line#*=}" ]; then
+            exValue="${line#*=}"
+            printf "%s: Custom exclude detected: %s\n" $app "$exValue"
+          fi
+        ;;
+        "auto_debloat="*)
+          if [ ! -z "${line#*=}" ]; then
+            debloatValue="${line#*=}"
+            [ "$debloatValue" -eq 1 ] && printf "%s: Auto-Debloat enabled\n" $app || printf "%s: Auto-Debloat disabled\n" $app
+          fi
+        ;;
+        "ignore_error="*)
+          if [ ! -z "${line#*=}" ]; then
+            ignoreValue="${line#*=}"
+            [ "$ignoreValue" -eq 1 ] && printf "%s: Ignore-Error enabled\n" $app || printf "%s: Ignore-Error disabled\n" $app
+          fi
+        ;;
+      esac
+    done < $configPath
+  fi
+}
+
+getSize(){
+  wc -c < $1
+}
+
+getCurrentSize(){
+    currentSize=`getSize $1`
+    currentSizeMB=$(echo $currentSize | awk '{print int($1 / 1024 / 1024)}')
+    currentSizeBlocks=$(echo $currentSize | awk '{print int($1 / 512)}')
+    if [ -z "$2" ]; then
+        printf "$app: Current size of $fiName in bytes: $currentSize\n"
+        printf "$app: Current size of $fiName in MB: $currentSizeMB\n"
+        printf "$app: Current size of $fiName in 512-byte sectors: $currentSizeBlocks\n\n"
+    fi
+}
+
+flash(){
+  if [ ! -z "$3" ]; then fcmd="dd if=$1 of=$2"; else fcmd="$binDir/simg2img $1 $2"; fi;
+  printf " ===================================================\n\
+|            Flashing procedure initiated...        |\n\
+ ===================================================\n\n"
+  printf "%s: Flashing %s to %s\n%s: Do not interrupt this process or you risk brick! Please wait...\n" $app $1 $2 $app
+  if ( ! $fcmd ); then
+    printf "%s: There was a problem flashing the image. Please try again\n\n" $app; exit 1
+  else
+    printf "%s: Successfully flashed %s to %s\n\n" $app $1 $2
+  fi
+  printf " ===================================================\n\n"
+}
+
+success(){
+    printf "%s: Congratulations! The sub-partitions inside your super.img should now have FULL-R/W (read/write) capability!\n" $app
+    #cleanUp "$imgDir/*.img"
+    if ( isRecovery ); then
+      printf "%s: Please reboot device...\n\n" $app
+    else
+      printf "%s: Please reboot into bootloader and flash the file(s) manually\n\n" $app
+    fi
+    printf " ---------------------------------------------------\n\
+|  If you like this project please visit the link   |\n\
+|     below and click [ DONATE ] to support the     |\n\
+| original developer lebigmac. Thank you very much! |\n\
+|    Your precious donation will allow me to pay    |\n\
+|  my electricity bills & continue working on this  |\n\
+|        project & keep it ad free as well as       |\n\
+|         create other amazing new projects!        |\n\
+|===================================================|\n\
+|     OFFICIAL HOMEPAGE @ http://lebigmac.2ix.ch    |\n\
+ ===================================================\n\n"
+    return 0
+}
+
+getGroups(){
+    for i in `tac $lpdumpPath | grep -F -m 3 "Name:" -B 1 | awk '!/^-/ {n=$(NF-1); getline; print n "|" $NF}'`; do
+        grpSize=${i//|*}; grpName=${i//*|}
+        [[ "$grpName" == "default" ]] && break
+        echo -n "--group $grpName:$superSize ">>$argsPath;
+    done
+}
+
+isRecovery(){
+    which twrp &> /dev/null
+    return $?
+}
+
+setSize(){
+    if ( ! $binDir/resize2fs -f $1 $2 2>/dev/null ); then
+        sr=$?; printf "%s: resize2fs error: %s @ %s\n" $app $sr $1
+        $binDir/e2fsck -fy $1
+        return $sr
+    fi
+}
+
+shrink2Min(){
+    printf "%s: Shrinking %s to minimum size...\n\n" $app `basename $1`
+    if ( ! $binDir/resize2fs -f -M $1 2>/dev/null ); then
+        sr=$?; printf "%s: resize2fs error: %s @ %s\n" $app $sr $1
+        $binDir/e2fsck -fy $1
+        return $sr
+    fi
+}
+
+autoResize(){
+    printf " ===================================================\n\n%s: Initiating Auto-Resize procedure...\n\n" $app
+    availableSize=`echo $maxTotalSize $totalPartSize | awk '{print int($1 - $2)}'`
+    extraSize=`echo $availableSize $imgCount | awk '{print int($1 / $2)}'`
+    for o in `awk '/Group:/ {grp=$NF; print name "|" grp}{name=$NF}' $lpdumpPath`; do
+        imgName=${o//|*}; groupName=${o//*|}; imgFile="$imgDir/$imgName.img"
+        if [[ "$groupName" != *"cow"* ]]; then
+          [[ "$slotCount" -eq 3 && "$imgName" != *"$slotSuffix" ]] && continue
+          getCurrentSize $imgFile 1
+          newAutoSize=`echo $currentSize $extraSize | awk '{print int($1 + $2)}'`
+          newAutoSizeS=`echo $currentSize $extraSize | awk '{print int(($1 + $2) / 512)}'`
+          setSize $imgFile $newAutoSizeS"s"
+          echo -n "--partition $imgName:none:$newAutoSize:$groupName ">>$argsPath
+          echo -n "--image $imgName=$imgFile ">>$argsPath
+        fi
+    done
+}
+
+getTotalImgSize(){
+  ls -l $imgDir/*.img | awk '{sum+=$5}; END {print sum}'
+}
+
+compareNum(){
+  if [ $3 ]; then
+    echo $1 $2 | awk 'END {ret=($1 > $2) ? 0 : 1; exit ret}'
+  else
+    echo $1 $2 | awk 'END {ret=($1 < $2) ? 0 : 1; exit ret}'
+  fi
+  return $?
+}
+
+superRW(){
+    #cleanUp "$imgDir/*.img"
+    argsPath="$logDir/lpmake_args.txt"
+    echo -n "--metadata-size 65536 --super-name super --metadata-slots $slotCount ">$argsPath
+    [ ! $raw ] && echo -n "--sparse ">>$argsPath
+    superSize=`grep -F -m 1 "Size:" $lpdumpPath | awk '{print $2}'`
+    echo -n "--device super:$superSize ">>$argsPath
+    getGroups
+    imgCount=0; totalPartSize=0
+    [[ -z "$sizeValue" || "$sizeValue" == "@auto" ]] && autoSize=1
+    for o in `awk '/Group:/ {grp=$NF; print name "|" grp}{name=$NF}' $lpdumpPath`; do
+        imgName=${o//|*}; groupName=${o//*|}; imgFile="$imgDir/$imgName.img"
+        if [[ "$groupName" != *"cow"* ]]; then
+            [[ "$slotCount" -eq 3 && "$imgName" != *"$slotSuffix" ]] && continue
+            imgCount=$(($imgCount + 1))
+            if [ ! -e $imgFile ]; then
+              if ( ! lpUnpack $imgName $1 ); then
+                printf "%s: Fatal lpUnpack error!\n\n" $app && return 1
+              fi
+            fi
+            [ $autoSize ] && sizeValue=0; [ ! $debloatValue ] && debloatValue=0
+            if [[ "$exValue" != *"$imgName"*  ]]; then
+              if ( ! $binDir/makerw in=$imgFile -q size=$sizeValue grow=300 debloat=$debloatValue ); then
+                mk=$?; printf "%s: Fatal MakeRW / ro2rw error: %s\n" $app $mk
+                lpUnpack $imgName $1 && exit $mk
+              fi
+            fi
+            getCurrentSize $imgFile 1
+            totalPartSize=`echo $totalPartSize $currentSize | awk '{print int($1 + $2)}'`
+            if [ ! $autoSize ]; then
+              echo -n "--partition $imgName:none:$currentSize:$groupName ">>$argsPath
+              echo -n "--image $imgName=$imgFile ">>$argsPath
+            fi
+        fi
+    done
+    maxTotalSize=`echo $superSize $thresValue | awk '{print int($1 - $2)'}`
+    printf "\n%s: Total partition size: %s, maximum super size: %s\n\n" $app $totalPartSize $maxTotalSize
+    if ( compareNum $maxTotalSize $totalPartSize 1 ); then
+      [ $autoSize ] && autoResize
+    else
+      excessValue=`echo $totalPartSize $maxTotalSize | awk '{print int($1 - $2)'}`
+      excessValueMB=`echo $excessValue | awk '{print int($1 / 1024 / 1024)'}`
+      printf "%s: Fatal error! Total partition size exceeds maximum super size by %s bytes (%s MB)\n\n" $app $excessValue $excessValueMB
+      return 1
+    fi
+    makeSuper
+    return $?
+}
+
+makeSuper(){
+    printf " ===================================================\n\n"
+    [[ "$outputValue" == "@auto" || -z "$outputValue" ]] && outputValue="$imgDir/super_patched.bin"
+    echo -n "--output $outputValue">>$argsPath
+    printf "%s: Merging all extracted sub-partitions back into one single super image...\n%s: Please wait and ignore the invalid sparse warnings...\n\n" $app $app
+    if ( $binDir/lpmake `cat $argsPath` 2>&1 ); then
+        printf "\n%s: Successfully created patched super image (%s) @ %s\n\n" $app `[ $raw ] && echo 'RAW' || echo 'SPARSE'` $outputValue
+        if ( isRecovery ); then
+          if ! [[ "$outputValue" == "$superPath" && $raw ]]; then
+            [ $raw ] && flash $outputValue $superPath 1 || flash $outputValue $superPath
+          fi
+        fi
+        success
+    else
+        ret=$?
+        dmesg > $logDir/lpmake_dmesg.txt
+        printf "\n$app: Error! failed to create patched super image. Error code: %s\n\n" $ret
+        return $ret
+    fi
+}
+
+lpUnpack(){
+    printf "\n%s: Unpacking embedded sub-partition (%s) from %s\n" $app $1 $2
+    if ( $binDir/lpunpack --slot=$slotNum --partition=$1 $2 $imgDir ); then
+        printf "%s: Embedded sub-partition (%s) was successfully extracted from %s\n" $app $1 $2
+        return 0
+    else
+        printf "%s: Please make sure the file exists and try again\n\n" $app
+        return 1
+    fi
+}
+
+isSuper(){
+    [ -e /dev/block/by-name/super ] && return 0 || return 1
+}
+
+getCurrentSlot(){
+    currentSlot=`getprop ro.boot.slot_suffix`
+    if [[ -z "$currentSlot" || "$currentSlot" == "_a" ]]; then
+      slotNum=0
+      if [ "$slotCount" -eq 3 ]; then slotSuffix="_a"
+      else slotSuffix=""; fi
+    elif [[ "$currentSlot" == "_b" ]]; then
+      slotNum=1; slotSuffix="_b"
+    fi
+    printf "$app: Current slot is: %s (suffix: %s)\n\n ===================================================\n" $slotNum $slotSuffix
+}
+
+getDeviceName(){
+    manufacturer=`getprop ro.product.manufacturer`
+    if ( isRecovery ); then
+        product=`getprop ro.product.model`
+    else
+        product=`getprop ro.product.marketname`
+        #product=`getprop ro.product.vendor.marketname`
+    fi
+    printf "$app: Current device: $manufacturer $product\n"
+}
+
+isMounted(){
+    [[ "`cat /proc/mounts`" == *"$1"* ]] && return 0 ||  return 1
+}
+
+checkRW(){
+    # to be updated
+}
+
+checkSDK(){
+    sdkVersion=`getprop ro.build.version.sdk`
+    if [ "$sdkVersion" -lt 29 ]; then
+        printf "$app: Please install Android 10 or newer and try again\n\n"; exit 1
+    fi
+    printf "$app: Current Android version: %s\n" $(($sdkVersion - 19))
+}
+
+lpdumpSetup(){
+  if ( ! isSuper 1 ); then
+    printf "%s: Fatal error! No super partition detected\n\n" $app && return 1
+  else
+    superPath=`realpath /dev/block/by-name/super`
+    printf "%s: Your super partition is located at: %s\n" $app $superPath
+    lpdumpPath="$logDir/lpdump.txt"
+    $binDir/lpdump --slot=$slotNum > $lpdumpPath
+    slotCount=`grep -F -m 1 "slot" $lpdumpPath | awk '{print $NF}'`
+  fi
+}
+
+checkDeviceState(){
+    if [ "`id -u`" -ne 0 ]; then printf "%s: Fatal error! No root detected\n\n" $app; exit 1; fi
+    isRecovery && printf "$app: Device is in recovery mode\n" || printf "$app: Device is in Android mode\n"
+    getDeviceName
+    printf "%s: Current device architecture: %s\n" $app `uname -m`
+    checkSDK
+    printf "$app: Adjusting permissions and disabling useless safety features\n"
+    for i in $binDir/*; do chmod +x $i; done
+    $binDir/avbctl --force disable-verification
+    $binDir/avbctl --force disable-verity
+    setenforce 0; printf "$app: Current SELinux status: %s\n" `getenforce`
+    [[ "`getprop ro.boot.dynamic_partitions`" == "true" ]] && printf "%s: Dynamic partitions detected\n" $app
+    lpdumpSetup
+    getCurrentSlot
+    #checkRW
+}
+
+main(){
+    welcome
+    parseConfig
+    parseArgs "$@"
+    printf "$app: Initiating procedure...\n\n"
+    checkDeviceState
+
+    if [ "$bakValue" -eq 1 ]; then
+      superOriginal=$imgDir"/super_original.bin"
+      [ ! -e "$superOriginal" ] && dump $superPath $superOriginal
+      for v in `ls /dev/block/by-name/vbmeta*`; do
+        p="$imgDir/${v##*/}_original.bin"
+        if [ ! -e $p ]; then
+          if [ "$slotCount" -eq 3 ]; then
+            [[ "`basename $v`" == *"$slotSuffix"* ]] && dump $v $p
+          else
+            dump $v $p
+          fi
+        fi
+      done
+    fi
+
+    if [[ -z "$inputValue" || "$inputValue" == "@auto" ]]; then
+      inputValue="$superPath"
+    fi
+    superRW $inputValue
+    return $?
+}
+
+cleanUp(){
+    for file in $1; do
+        rm -f $file
+    done
+}
+
+mkdir -p $logDir $imgDir $tmpDir
+main "$@" | tee $logDir"/"$app"_log.txt"
+return $?
+
