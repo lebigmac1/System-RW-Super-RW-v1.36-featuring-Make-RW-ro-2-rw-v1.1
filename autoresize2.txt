@@ -1,3 +1,5 @@
+# This patch should fix mi_ext_a error in autoResize() function. Make sure to only write those partitions in the exclude parameter in config.ini that really exist and that should be excluded from the whole process.
+
 autoResize(){
     printf " ===================================================\n\n%s: Initiating Auto-Resize procedure...\n\n" $app
     [ $exValue ] && skipNum=`echo "$exValue" | awk '{print NF}'` || skipNum=0
