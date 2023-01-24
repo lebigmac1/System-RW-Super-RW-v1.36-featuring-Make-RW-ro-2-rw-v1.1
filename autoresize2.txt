@@ -1,0 +1,18 @@
+autoResize(){
+    printf " ===================================================\n\n%s: Initiating Auto-Resize procedure...\n\n" $app
+    [ $exValue ] && skipNum=`echo "$exValue" | awk '{print NF}'` || skipNum=0
+    availableSize=`echo $maxTotalSize $totalPartSize | awk '{print int($1 - $2)}'`
+    extraSize=`echo $availableSize $imgCount $skipNum | awk '{print int($1 / ($2 - $3))}'`
+    for o in `awk '/Group:/ {grp=$NF; print name "|" grp}{name=$NF}' $lpdumpPath`; do
+        imgName=${o//|*}; groupName=${o//*|}; imgFile="$imgDir/$imgName.img"
+        if [[ "$groupName" != *"cow"* ]]; then
+          [[ "$slotCount" -eq 3 && "$imgName" != *"$slotSuffix" ]] && continue
+          getCurrentSize $imgFile 1
+          newAutoSize=`echo $currentSize $extraSize | awk '{print int($1 + $2)}'`
+          newAutoSizeS=`echo $currentSize $extraSize | awk '{print int(($1 + $2) / 512)}'`
+          [[ "$exValue" != *"$imgName"* ]] && setSize $imgFile $newAutoSizeS"s" || newAutoSize=$currentSize
+          echo -n "--partition $imgName:none:$newAutoSize:$groupName ">>$argsPath
+          echo -n "--image $imgName=$imgFile ">>$argsPath
+        fi
+    done
+}
