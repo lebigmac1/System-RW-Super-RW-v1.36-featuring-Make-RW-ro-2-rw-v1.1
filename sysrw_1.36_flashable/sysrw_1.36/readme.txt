@@ -21,10 +21,10 @@
 
 # If you like this project then please feel free to donate to the original developer lebigmac by visiting the official link below and clicking the [ DONATE ] button. Thank you very much! Your support is very much appreciated and it will help me to pay my horrendous electricity bills so I can continue working on this project (and adding new features) + keep it ad-free & create many more amazing new projects like this! :D
 
-# *** OFFICIAL SYSTEMRW/SUPERRW FEAT. MAKERW/RO2RW BY LEBIGMAC HOMEPAGE *** @ 
+# *** OFFICIAL SYSTEM RW / SUPER RW FEAT. MAKERW / RO2RW BY LEBIGMAC HOMEPAGE *** @ 
 # ==================================================================================================
 
-#                   http://lebigmac.2ix.ch
+#                   http://www.systemrw.com
 
 # ==================================================================================================
 
@@ -97,18 +97,12 @@
 
 # Please post your feedback, suggestions and your Olympic Android System Mods (OASMG) @ the official SystemRW/SuperRW feat. MakeRW/ro2rw links below :
 
-# *** OFFICIAL SYSTEMRW/SUPERRW FEAT. MAKERW/RO2RW BY LEBIGMAC HOMEPAGE *** @ 
+# *** OFFICIAL SYSTEM RW / SUPER RW FEAT. MAKERW / RO2RW BY LEBIGMAC HOMEPAGE *** @ 
 # ==================================================================================================
 
-#                   http://lebigmac.2ix.ch
+#                   http://www.systemrw.com
 
 # ==================================================================================================
-
-# https://forum.xda-developers.com/t/universal-systemrw-superrw-feat-makerw-ro2rw-read-only-2-read-write-super-partition-converter-resizer-by-lebigmac.4247311/
-
-# https://forum.xda-developers.com/t/closed-the-real-makerw-ro2rw-v1-0-by-lebigmac-read-only-2-read-write-partition-converter-erofs-rw-ext4-rw-f2fs-rw.4536821/
-
-# --------------------------------------------------------------------------------------------------------------
 
 # TROUBLESHOOTING:
 # If you experience error 73 or bootloop you can try the included sysrw_repair or undo_bootloop scripts in the ./repair subfolder! Good luck!
