@@ -1,17 +1,13 @@
 #!/system/bin/sh
 
 # Welcome to the one and only original, universal
-# SystemRW/SuperRW feat. MakeRW/ro2rw by lebigmac
+# System RW / Super RW feat. MakeRW / ro2rw by lebigmac
 
 # ==========================================================
 
-#                 http://lebigmac.2ix.ch
+#                 http://www.systemrw.com
 
 # ==========================================================
-
-# https://forum.xda-developers.com/t/universal-systemrw-superrw-feat-makerw-ro2rw-read-only-2-read-write-super-partition-converter-resizer-by-lebigmac.4247311/
-
-# https://forum.xda-developers.com/t/the-real-makerw-ro2rw-v1-0-by-lebigmac-read-only-2-read-write-partition-converter-erofs-rw-ext4-rw-f2fs-rw.4536821/
 
 app="sysrw"; author="lebigmac"; version="1.36"; ro2rw="1.1"; title=$app"_"$version
 binDir=`dirname $0`; appDir="$binDir/.."; logDir="$appDir/log"; imgDir="$appDir/img"; tmpDir="$imgDir/tmp"; optDir="$appDir/options"
